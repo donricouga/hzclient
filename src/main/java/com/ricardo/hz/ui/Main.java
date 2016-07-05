@@ -1,5 +1,6 @@
 package com.ricardo.hz.ui;
 
+import com.hazelcast.core.EntryView;
 import com.hazelcast.core.IMap;
 import com.ricardo.hz.connection.HZClient;
 import javafx.application.Application;
@@ -7,6 +8,7 @@ import javafx.concurrent.Task;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.layout.StackPane;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
 import javafx.scene.layout.VBox;
@@ -25,8 +27,14 @@ import javafx.geometry.Pos;
 import javafx.geometry.Insets;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.TimeZone;
+
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
@@ -41,8 +49,10 @@ public class Main extends Application {
 	private Scene scene;
 	private HBox buttonHb;
 	private StackPane root;
+	private Text actionStatus;
 	public static ObservableList<IMapEntry> data;
-	//private Text actionStatus;
+
+	DateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
 	private HZClient hzClient;
 
@@ -53,6 +63,7 @@ public class Main extends Application {
 
 	@Override
 	public void start(Stage primaryStage) {
+		format.setTimeZone(TimeZone.getTimeZone("EST"));
 		hzClient = new HZClient();
 		root = new StackPane();
 
@@ -81,7 +92,7 @@ public class Main extends Application {
 			@Override
 			public void handle(CellEditEvent<IMapEntry, String> t) {
 
-				((IMapEntry) t.getTableView().getItems().get(
+				(t.getTableView().getItems().get(
 					t.getTablePosition().getRow())
 				).setKey(t.getNewValue());
 			}
@@ -116,13 +127,13 @@ public class Main extends Application {
 		buttonHb.getChildren().addAll(delbtn);
 
 		// Status message text
-//		actionStatus = new Text();
-//		actionStatus.setFill(Color.FIREBRICK);
+		actionStatus = new Text();
+		actionStatus.setFill(Color.FIREBRICK);
 
 		// Vbox
 		VBox vbox = new VBox(20);
 		vbox.setPadding(new Insets(25, 25, 25, 25));;
-		vbox.getChildren().addAll(labelHb, table, buttonHb);
+		vbox.getChildren().addAll(labelHb, table, buttonHb, actionStatus);
 
 		//Add to root stackpane
 		root.getChildren().add(vbox);
@@ -133,7 +144,24 @@ public class Main extends Application {
 		primaryStage.show();
 		
 	} // start()
-	
+
+	private String generateEntryStats(String key) {
+		EntryView entry = hzClient.getSessionMap().getEntryView(key);
+		String createTime = format.format(new Date(entry.getCreationTime()));
+		String expTime = format.format(new Date(entry.getExpirationTime()));
+		String ttl = Double.toString(entry.getTtl() / 1000);
+		String lastAccessTime = format.format(new Date(entry.getLastAccessTime()));
+		String lastStoredTime = format.format(new Date(entry.getLastStoredTime()));
+		String lastUpdateTime = format.format(new Date(entry.getLastUpdateTime()));
+
+		StringBuffer sb = new StringBuffer();
+		sb.append("Creation Time : ").append(createTime).append("\nExpiration Time : ").append(expTime).append("\nTTL : ").append(ttl).append(" secs")
+				.append("\nLast Access Time : ").append(lastAccessTime).append("\nLast Stored Time : ").append(lastStoredTime)
+				.append("\nLast Updated Time : ").append(lastUpdateTime);
+		return sb.toString();
+
+	}
+
  	private class RowSelectChangeListener implements ChangeListener<Number> {
 
 		@Override
@@ -141,13 +169,18 @@ public class Main extends Application {
 				Number oldVal, Number newVal) {
 
 			int ix = newVal.intValue();
+			System.out.println("____ " + ov.toString());
+			System.out.println(ov.getValue());
 
 			if ((ix < 0) || (ix >= data.size())) {
 	
 				return; // invalid data
 			}
 
-			IMapEntry IMapEntry = data.get(ix);
+			IMapEntry entry = data.get(ix);
+			String stats = generateEntryStats(entry.getKey());
+			actionStatus.setText(stats);
+
 		}
 	}
 
@@ -242,5 +275,6 @@ public class Main extends Application {
 			table.getFocusModel().focus(ix);
 		}
 	}
+
 }
 

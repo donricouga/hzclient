@@ -30,6 +30,7 @@ public class SessionMapListener implements EntryAddedListener<String, String>,
     @Override
     public void entryRemoved( EntryEvent<String, String> event ) {
         System.out.println( "Entry Removed:" + event );
+        Main.data.remove(new IMapEntry(event.getKey(), event.getValue()));
     }
 
     @Override
