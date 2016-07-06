@@ -42,6 +42,7 @@ import javafx.event.EventHandler;
 
 public class Main extends Application {
 
+	private static final String LOCAL = "local";
 	private static final String DEV = "dev";
 	private static final String QA = "qa";
 
@@ -194,7 +195,7 @@ public class Main extends Application {
 	}
 
 	private ComboBox createEnvironmentComboBox() {
-		ComboBox<String> comboBox = new ComboBox<>(FXCollections.observableArrayList(DEV, QA));
+		ComboBox<String> comboBox = new ComboBox<>(FXCollections.observableArrayList(LOCAL, DEV, QA));
 		comboBox.setPromptText("Select Environment");
 		comboBox.valueProperty().addListener( (x,oldVal,newVal) ->
 			{
@@ -205,7 +206,7 @@ public class Main extends Application {
 				this.buttonHb.setDisable(true);
 				root.getChildren().add(box);
 
-				Task environmentWorker = createEnvironmentTask(newVal, box);
+				Task environmentWorker = createEnvironmentTask(newVal);
 
 				pi.progressProperty().unbind();
 				pi.progressProperty().bind(environmentWorker.workDoneProperty());
@@ -219,7 +220,7 @@ public class Main extends Application {
 		return comboBox;
 	}
 
-	private Task createEnvironmentTask(final String newVal, VBox box) {
+	private Task createEnvironmentTask(final String newVal) {
 		return new Task() {
 
 			@Override
@@ -228,6 +229,10 @@ public class Main extends Application {
 				data.clear();
 
 				switch(newVal) {
+					case LOCAL:
+						hzClient.init("127.0.0.1:5702", "ums-hz", "ums-hz-pass");
+						addData();
+						break;
 					case DEV :
 						hzClient.init("sdc-nppf01-dev.vpymnts.net:5702", "ums-hz", "ums-hz-pass");
 						addData();

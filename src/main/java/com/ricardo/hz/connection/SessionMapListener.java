@@ -23,33 +23,36 @@ public class SessionMapListener implements EntryAddedListener<String, String>,
 
     @Override
     public void entryAdded( EntryEvent<String, String> event ) {
-        System.out.println( "Entry Added:" + event );
+        System.out.println( "Entry Added: " + event );
         Main.data.add(new IMapEntry(event.getKey(), event.getValue()));
     }
 
     @Override
     public void entryRemoved( EntryEvent<String, String> event ) {
-        System.out.println( "Entry Removed:" + event );
-        Main.data.remove(new IMapEntry(event.getKey(), event.getValue()));
+        System.out.println( "Entry Removed: " + event );
+        Main.data.removeIf(p -> p.getKey().equals(event.getKey()));
     }
 
     @Override
     public void entryUpdated( EntryEvent<String, String> event ) {
-        System.out.println( "Entry Updated:" + event );
+        System.out.println( "Entry Updated: " + event );
     }
 
     @Override
     public void entryEvicted( EntryEvent<String, String> event ) {
-        Main.data.remove(new IMapEntry(event.getKey(), event.getValue()));
+        System.out.println( "Entry Evicted: " + event);
+        Main.data.removeIf(p -> p.getKey().equals(event.getKey()));
     }
 
     @Override
     public void mapEvicted( MapEvent event ) {
+        System.out.println( "Map Evicted: " + event);
         Main.data.clear();
     }
 
     @Override
     public void mapCleared( MapEvent event ) {
+        System.out.println( "Map Cleared: " + event);
         Main.data.clear();
     }
 
