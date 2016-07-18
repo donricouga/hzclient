@@ -34,17 +34,24 @@ import java.util.Date;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 public class Main extends Application {
 
 	private static final String LOCAL = "local";
 	private static final String DEV = "dev";
 	private static final String QA = "qa";
+	private static final String STAGE = "stage";
 
 	private TableView<IMapEntry> table;
 	private Scene scene;
@@ -56,6 +63,8 @@ public class Main extends Application {
 	DateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
 	private HZClient hzClient;
+
+	private ExecutorService executor = Executors.newSingleThreadExecutor();
 
 	public static void main(String [] args) {
 
@@ -195,7 +204,7 @@ public class Main extends Application {
 	}
 
 	private ComboBox createEnvironmentComboBox() {
-		ComboBox<String> comboBox = new ComboBox<>(FXCollections.observableArrayList(LOCAL, DEV, QA));
+		ComboBox<String> comboBox = new ComboBox<>(FXCollections.observableArrayList(LOCAL, DEV, QA, STAGE));
 		comboBox.setPromptText("Select Environment");
 		comboBox.valueProperty().addListener( (x,oldVal,newVal) ->
 			{
@@ -206,12 +215,16 @@ public class Main extends Application {
 				this.buttonHb.setDisable(true);
 				root.getChildren().add(box);
 
-				Task environmentWorker = createEnvironmentTask(newVal);
+				Task <Void>environmentWorker = createEnvironmentTask(newVal);
 
 				pi.progressProperty().unbind();
 				pi.progressProperty().bind(environmentWorker.workDoneProperty());
 
 				environmentWorker.setOnSucceeded((workerStateEvent) -> {
+					root.getChildren().remove(box);
+					buttonHb.setDisable(false);
+				});
+				environmentWorker.setOnFailed((workerStateEvent) -> {
 					root.getChildren().remove(box);
 					buttonHb.setDisable(false);
 				});
@@ -221,10 +234,22 @@ public class Main extends Application {
 	}
 
 	private Task createEnvironmentTask(final String newVal) {
+		Runnable timerTask = () -> System.out.println("Client is switching to " + newVal);
+		FutureTask<Void> futureTask = new FutureTask<>(timerTask, null);
+		Thread t = new Thread(futureTask);
+		t.start();
+		try {
+			futureTask.get(10, SECONDS);  //let's timeout if we cannot connect within 10 seconds.
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+
 		return new Task() {
 
 			@Override
 			protected Object call() throws Exception {
+				Thread t = new Thread(futureTask);
+				t.start();
 				hzClient.disconnect();
 				data.clear();
 
@@ -239,6 +264,10 @@ public class Main extends Application {
 						break;
 					case QA :
 						hzClient.init("sdc-nppf01-qa.vpymnts.net:5702", "ums-hz", "ums-hz-pass");
+						addData();
+						break;
+					case STAGE :
+						hzClient.init("sdc-pfapp01-stage.vpymnts.net", "ums-hz", "ums-hz-pass");
 						addData();
 						break;
 					default:

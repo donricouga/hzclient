@@ -37,10 +37,6 @@ public class HZClient {
             client.shutdown();
     }
 
-    public void addEntry(String key, String value) {
-        sessionMap.put(key,value);
-    }
-
     public void deleteEntry(String key) {
         sessionMap.delete(key);
     }
